@@ -28,7 +28,7 @@ suppressMessages(library(scider))
 suppressMessages(library(SpatialExperiment))
 ```
 
-scider is an user-friendly R package providing functions to model 
+scider is a user-friendly R package providing functions to model 
 the global density of cells in a slide of spatial transcriptomics 
 data. All functions in the package are built based on the 
 SpatialExperiment object, allowing integration into various 
