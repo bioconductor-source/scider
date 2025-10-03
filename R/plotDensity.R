@@ -1,10 +1,13 @@
 #' Plot grid-based density.
 #'
 #' @param spe A SpatialExperiment object.
-#' @param coi A character vector of cell types of interest (COIs).
+#' @param coi A character vector of cell types of interest (COIs) to be plotted.
+#' Default to all cell types.
 #' @param probs Numeric value between 0 and 1, used for filtering
-#' uninformative grid, default is 0.8.
-#'
+#' uninformative grid, default is 0.5.
+#' @param reverseY Logical. Whether to reverse Y coordinates. Default is TRUE 
+#' if the spe contains an image (even if not plotted) and FALSE if otherwise.
+#' @param ... Parameters pass to \link[scider]{plotGrid}
 #' @return A ggplot object.
 #' @export
 #'
@@ -18,51 +21,23 @@
 #'
 #' plotDensity(spe, coi = "Fibroblasts")
 #'
-plotDensity <- function(spe, coi, probs = 0.8) {
-    grid_data <- as.data.frame(spe@metadata$grid_density)
-
-    coi_clean <- janitor::make_clean_names(coi)
-    dens_cols <- paste("density", coi_clean, sep = "_")
-
-    if (!all(dens_cols %in% colnames(grid_data))) {
-        stop("Density of COI is not yet computed.")
-    }
-
-    grid_data$density_coi_average <- rowMeans(as.matrix(
-        grid_data[, which(colnames(grid_data) %in% dens_cols),
-            drop = FALSE
-        ]
-    ))
-
-    kp <- grid_data$density_coi_average >=
-        quantile(grid_data$density_coi_average,
-            probs = probs
-        )
-
-    p <- ggplot() +
-        geom_tile(
-            data = grid_data[kp, ],
-            aes(
-                x = x_grid, y = y_grid,
-                fill = density_coi_average
-            )
-        ) +
-        theme_classic() +
-        scale_fill_gradientn(colours = rev(col.spec)) +
-        labs(x = "x", y = "y", fill = "Density") +
-        lims(
-            x = c(
-                min(grid_data[, "x_grid"]),
-                max(grid_data[, "x_grid"])
-            ),
-            y = c(
-                min(grid_data[, "y_grid"]),
-                max(grid_data[, "y_grid"])
-            )
-        )
-    ggtitle(coi)
-
-    return(p)
+plotDensity <- function(spe, coi = NULL, probs = 0.5, reverseY=NULL,...) {
+  coi_clean <- `if`(is.null(coi),"overall",cleanName(coi))
+  dens_cols <- paste("density", coi_clean, sep = "_")
+  
+  if (!all(dens_cols %in% colnames(spe@metadata$grid_density))) {
+    stop("Density of COI is not yet computed.")
+  }
+  spe@metadata$grid_density$density_coi_average <- rowSums(as.matrix(
+    spe@metadata$grid_density[, dens_cols, drop = FALSE]
+  ))
+  plotGrid(spe,
+           group.by="density_coi_average",
+           probs=probs,
+           label="Density",
+           reverseY=reverseY,
+           ...) +
+    ggtitle(paste(coi_clean, collapse=", "))
 }
 
 utils::globalVariables(c("x_grid", "y_grid", "density_coi_average"))

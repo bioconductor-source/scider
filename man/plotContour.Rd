@@ -6,27 +6,43 @@
 \usage{
 plotContour(
   spe,
-  coi,
-  overlay = c("cell", "density"),
+  coi = NULL,
+  overlay = c("cell", "density", "none"),
   id = "cell_type",
   sub.level = NULL,
+  line.type = 1,
+  line.width = 0.5,
+  line.alpha = 1,
+  reverseY = NULL,
   ...
 )
 }
 \arguments{
 \item{spe}{A SpatialExperiment object.}
 
-\item{coi}{A character vector of length 1 of the cell type of interest.}
+\item{coi}{A character vector of cell types of interest (COIs).
+All cell types are chosen if NULL or 'overall'.}
 
-\item{overlay}{Character vector. Either plot overlay on density or cell.
-By default is cell.}
+\item{overlay}{Character vector. Options are 'cell' (plot overlay on cells),
+'density' (overlay on density), or 'none'. Default to 'cell'.}
 
 \item{id}{A character. The name of the column of colData(spe) containing
-the cell type identifiers. Set to cell_type by default.}
+the cell type identifiers. Set to 'cell_type' by default.}
 
 \item{sub.level}{Character vector. Subset on specific level.}
 
-\item{...}{Aesthetic mappings to pass to \code{ggplot2::aes_string()}.}
+\item{line.type}{shape of contour. See 'ggplot2::geom_path()'.}
+
+\item{line.width}{size of contour.}
+
+\item{line.alpha}{alpha of contour between 0 and 1.}
+
+\item{reverseY}{Logical. Whether to reverse Y coordinates. Default is TRUE
+if the spe contains an image (even if not plotted) and FALSE if otherwise.}
+
+\item{...}{Aesthetic mappings to pass to \link[scider]{plotSpatial},
+\link[scider]{plotDensity}, or \link[scider]{plotImage}, depending on
+the overlay.}
 }
 \value{
 A ggplot object.
@@ -44,6 +60,6 @@ coi <- "Breast cancer"
 
 spe <- getContour(spe, coi = coi)
 
-plotContour(spe, coi = coi, size = 0.3, alpha = 0.2)
+plotContour(spe, coi = coi, line.width = 0.3, pt.alpha = 0.2)
 
 }

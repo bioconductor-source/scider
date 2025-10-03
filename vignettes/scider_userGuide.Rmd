@@ -1,6 +1,6 @@
 ---
 title: "A quick start guide to the scider package"
-author: "Ning Liu, Mengbo Li, Yunshun Chen"
+author: "Mengbo Li, Ning Liu, Quoc Hoang Nguyen and Yunshun Chen"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -26,9 +26,11 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, dpi = 72)
 suppressWarnings(library(ggplot2))
 suppressMessages(library(scider))
 suppressMessages(library(SpatialExperiment))
+
+setClassUnion("ExpData", c("matrix", "SummarizedExperiment"))
 ```
 
-scider is a user-friendly R package providing functions to model 
+scider is an user-friendly R package providing functions to model 
 the global density of cells in a slide of spatial transcriptomics 
 data. All functions in the package are built based on the 
 SpatialExperiment object, allowing integration into various 
@@ -85,7 +87,7 @@ We can use the function `plotSpatial` to visualise the cell position and
 color the cells by cell types.
 
 ```{r, fig.width=5, fig.height=4}
-plotSpatial(spe, color = cell_type, alpha = 0.8)
+plotSpatial(spe, group.by = "cell_type", pt.alpha = 0.8)
 ```
 
 
@@ -96,34 +98,26 @@ data.
 
 ## Density calculation
 
-Before calculating density, we need to define cell type-of-interest (COI).
-In this case, all cell types are COIs.
-
-```{r}
-coi <- unique(colData(spe)$cell_type)
-coi
-```
-
-We can perform density calculation for each COI using function `gridDensity`.
+We can perform density calculation for each cell type using function `gridDensity`.
 The calculated density and grid information are saved in the metadata of the 
 SpatialExperimnet object.
-
 ```{r}
-spe <- gridDensity(spe, coi = coi)
-
+spe <- gridDensity(spe)
 names(metadata(spe))
 ```
-
 ```{r}
 metadata(spe)$grid_density
 ```
 
-We can visualise the density of each COI using function `plotDensity`.
-
+We can visualise the overall cell density of the whole tissue using function `plotDensity`.
 ```{r, fig.width=5, fig.height=4}
-plotDensity(spe, coi = coi[1])
+plotDensity(spe)
 ```
 
+We can also visualise the density of individual cell type, e.g., fibroblast cells.
+```{r, fig.width=5, fig.height=4}
+plotDensity(spe, coi = "Fibroblasts")
+```
 
 
 ## Find Regions-of-interest (ROIs)
@@ -137,16 +131,15 @@ To detect ROIs automatically, we can use the function `findROI`.
 
 The detected ROIs are saved in the metadata of the SpatialExperiment object.
 
+Here we identify ROIs based on the fibroblasts cell density.
 ```{r}
-spe <- findROI(spe, coi = coi)
-
-metadata(spe)$roi
+spe <- findROI(spe, coi = "Fibroblasts")
+metadata(spe)$fibroblasts_roi
 ```
 
 We can visualise the ROIs with function `plotROI`.
-
 ```{r, fig.width=5, fig.height=5}
-plotROI(spe)
+plotROI(spe, roi = "Fibroblasts")
 ```
 
 ### Select ROI by user
@@ -175,7 +168,6 @@ the SpatialExperiment object.
 
 ```{r, eval=FALSE}
 spe1 <- postSelRegion(spe, sel_region = sel_region)
-
 metadata(spe1)$roi
 ```
 
@@ -189,22 +181,24 @@ plotROI(spe1)
 
 After defining ROIs, we can then test the relationship between any two 
 cell types within each ROI or overall but account for ROI variation using 
-a cubic spline or a linear fit.
-
-This can be done with function `corrDensity`, by setting the `celltype1` and 
-`celltype2` parameters, the modelling results are saved in the metadata 
-of the SpatialExperiment object.
-
+a cubic spline or a linear fit. This can be done with function `corrDensity`.
 
 ```{r}
-model_result <- corDensity(spe)
+results <- corDensity(spe, roi = "Fibroblasts")
 ```
 
-We can see the correlation between breast cancer and fibroblasts in each ROI.
+We can see the correlation between each pair of cell types in each fibroblasts ROI.
 
 ```{r}
-model_result
+results$ROI
 ```
+
+Or the correlation between each pair of cell types across all fibroblasts ROI:
+
+```{r}
+results$overall
+```
+
 
 We can also visualise the fitting using function `plotDensCor`.
 
@@ -212,20 +206,18 @@ We can also visualise the fitting using function `plotDensCor`.
 plotDensCor(spe, celltype1 = "Breast cancer", celltype2 = "Fibroblasts")
 ```
 
-Or, we can visualise the statistics between cell types using 
-function `plotModStat` with a heatmap.
+Or, we can visualise the statistics between each pair of cell types using 
+function `plotCorHeatmap` in the ROIs: 
 
 
 ```{r, fig.width=7, fig.height=4}
-plotCorHeatmap(model_result)
+plotCorHeatmap(results$ROI)
 ```
 
+Or the correlation between cell type pairs across the whole slide:
 
-
-```{r, fig.width=5, fig.height=4}
-model_result2 <- corDensity(spe, by.roi = FALSE)
-
-plotCorHeatmap(model_result2)
+```{r, fig.width=7, fig.height=4}
+plotCorHeatmap(results$overall)
 ```
 
 
@@ -233,8 +225,8 @@ plotCorHeatmap(model_result2)
 
 Based on the grid density, we can ask many biological question about the data. 
 For example, we would like to know if a certain cell type that are located in 
-high density of breast cancer cells are different to the same cell type from 
-a different level of breast cancer region.
+high density of fibroblast cells are different to the same cell type from 
+a different level of fibroblast region.
 
 ## cell annotation based on grid density
 
@@ -244,13 +236,13 @@ strategy with function `getContour`.
 
 
 ```{r}
-spe <- getContour(spe, coi = "Breast cancer")
+spe <- getContour(spe, coi = "Fibroblasts", equal.cell = TRUE)
 ```
 
 Different level of contour can be visualised with cells using `plotContour`.
 
 ```{r, fig.width=5, fig.height=4}
-plotContour(spe, coi = "Breast cancer")
+plotContour(spe, coi = "Fibroblasts")
 ```
 
 
@@ -264,41 +256,22 @@ spe <- allocateCells(spe)
 
 
 ```{r, fig.width=6, fig.height=4}
-plotSpatial(spe, color = breast_cancer_contour, alpha = 0.5)
+plotSpatial(spe, group.by = "fibroblasts_contour", pt.alpha = 0.5)
 ```
 
 We can visualise cell type composition per level.
 
 ```{r, fig.width=6, fig.height=4}
-plotCellCompo(spe, coi = "Breast cancer")
+plotCellCompo(spe, contour = "Fibroblasts")
 ```
 
 
 ```{r, fig.width=7, fig.height=5}
-plotCellCompo(spe, coi = "Breast cancer", by.roi = TRUE)
+plotCellCompo(spe, contour = "Fibroblasts", roi = "Fibroblasts")
 ```
-
-
-
 
 
 ```{r}
 sessionInfo()
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

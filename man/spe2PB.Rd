@@ -9,7 +9,8 @@ spe2PB(
   spe,
   by.group = TRUE,
   group.id = "cell_type",
-  by.roi = TRUE,
+  keep.groups = NULL,
+  roi = NULL,
   roi.only = TRUE,
   contour = NULL
 )
@@ -23,8 +24,13 @@ TRUE by default.}
 \item{group.id}{Character. The column name of the colData(spe) that
 contains the group information. Default to 'cell_type'.}
 
-\item{by.roi}{Logical. Whether to perform pseudo-bulking by ROI.
-TRUE by default.}
+\item{keep.groups}{Vector. Values from group.id to include in pseudo-
+bulking. Default is NULL, where all cells are included in pseudo-bulking.}
+
+\item{roi}{Character. The name of the group or cell type on which
+the roi is computed.
+If NULL, then no pseudo-bulking will be performed based on roi.
+Default to NULL.}
 
 \item{roi.only}{Logical. Whether to filter out pseudo-bulk samples formed
 by cells not in any ROIs. TRUE by default.}
@@ -52,8 +58,8 @@ coi <- "Breast cancer"
 
 spe <- findROI(spe, coi = coi)
 
-spe <- allocateCells(spe)
+spe <- allocateCells(spe, to.contour=FALSE)
 
-y <- spe2PB(spe)
+y <- spe2PB(spe, roi = coi)
 
 }

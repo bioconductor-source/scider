@@ -8,11 +8,12 @@ plotCorHeatmap(
   model.result,
   stats = c("cor.coef", "t", "p.Pos", "p.Neg"),
   roi = "all",
-  cell.type = "all"
+  cell.type = "all",
+  silent = FALSE
 )
 }
 \arguments{
-\item{model.result}{A data.frame object.}
+\item{model.result}{A dataFrame object.}
 
 \item{stats}{Character value. Choose either coefficient or t.
 Coefficient by default.}
@@ -22,6 +23,9 @@ ROIs to be plotted.}
 
 \item{cell.type}{Character value. By default is all. The cell types
 to be plotted.}
+
+\item{silent}{Do not draw the plot
+(useful when using the gtable output).}
 }
 \value{
 A pheatmap object.
@@ -37,10 +41,10 @@ coi <- c("Breast cancer", "Fibroblasts", "B cells", "T cells")
 
 spe <- gridDensity(spe, coi = coi)
 
-spe <- findROI(spe, coi = coi, method = "walktrap")
+spe <- findROI(spe, coi = coi)
 
-model_result <- corDensity(spe)
+model_result <- corDensity(spe, roi = coi)
 
-plotCorHeatmap(model_result)
+plotCorHeatmap(model_result$ROI)
 
 }

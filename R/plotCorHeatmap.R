@@ -1,12 +1,14 @@
 #' Plot model statistics using heatmap.
 #'
-#' @param model.result A data.frame object.
+#' @param model.result A dataFrame object.
 #' @param stats Character value. Choose either coefficient or t.
 #' Coefficient by default.
 #' @param roi Character value. By default is all. The specific
 #' ROIs to be plotted.
 #' @param cell.type Character value. By default is all. The cell types
 #' to be plotted.
+#' @param silent Do not draw the plot
+#' (useful when using the gtable output). 
 #' @return A pheatmap object.
 #' @export
 #'
@@ -18,16 +20,17 @@
 #'
 #' spe <- gridDensity(spe, coi = coi)
 #'
-#' spe <- findROI(spe, coi = coi, method = "walktrap")
+#' spe <- findROI(spe, coi = coi)
 #'
-#' model_result <- corDensity(spe)
+#' model_result <- corDensity(spe, roi = coi)
 #'
-#' plotCorHeatmap(model_result)
+#' plotCorHeatmap(model_result$ROI)
 #'
 plotCorHeatmap <- function(model.result,
                            stats = c("cor.coef", "t", "p.Pos", "p.Neg"),
                            roi = "all",
-                           cell.type = "all") {
+                           cell.type = "all", 
+                           silent = FALSE) {
     if (!all(c("cor.coef", "p.Pos", "p.Neg") %in%
         colnames(model.result))) {
         stop("Please run corDensity before using this function.")
@@ -35,11 +38,12 @@ plotCorHeatmap <- function(model.result,
 
     fit_dat <- model.result
 
-    if (length(stats) != 1) {
-        stats <- "cor.coef"
-    } else if (!(stats %in% c("cor.coef", "t", "p.Pos", "p.Neg"))) {
-        stop("stats can only allow either cor.coef, t, p.Pos and p.Neg.")
-    }
+    stats <- match.arg(stats)
+    # if (length(stats) != 1) {
+    #     stats <- "cor.coef"
+    # } else if (!(stats %in% c("cor.coef", "t", "p.Pos", "p.Neg"))) {
+    #     stop("stats can only allow either cor.coef, t, p.Pos and p.Neg.")
+    # }
 
     if (all(cell.type != "all")) {
         cell.type <- janitor::make_clean_names(cell.type, case = "sentence")
@@ -93,26 +97,25 @@ plotCorHeatmap <- function(model.result,
         "#F1F4FFFF", "#97B3D0FF",
         "#011936FF"
     ))(paletteLength))
-
-    myBreaks <- c(
-        seq(min(filled_data), 0,
-            length.out = ceiling(paletteLength / 2) + 1
-        ),
-        seq(max(filled_data) / paletteLength, max(filled_data),
-            length.out = floor(paletteLength / 2)
-        )
-    )
+    
+    max_val <- max(abs(filled_data))
+    
+    myBreaks <- seq(-max_val, 
+                    max_val, 
+                    length.out = paletteLength + 1)
 
     if (nrow(filled_data) == 1L) {
         pheatmap::pheatmap(filled_data,
             angle_col = 45, border_color = "white",
             color = hmColor, breaks = myBreaks,
-            main = title, cluster_rows = FALSE
+            main = title, cluster_rows = FALSE, 
+            silent = silent
         )
     } else {
         pheatmap::pheatmap(filled_data,
             angle_col = 45, border_color = "white",
             color = hmColor, breaks = myBreaks,
+            silent = silent, 
             main = title
         )
     }

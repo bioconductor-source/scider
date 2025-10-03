@@ -1,10 +1,15 @@
 #' Plot ROIs on spatial.
 #'
 #' @param spe A SpatialExperiment object.
+#' @param roi Character. The name of the group or cell type on which
+#' the roi is computed. All cell types are chosen if NULL or 'overall'.
 #' @param id Character. The name of the column of colData(spe) containing
 #' the cell type identifiers. Set to cell_type by default.
+#' @param label Logical. Show ROI label or not.
 #' @param show.legend Logical. Show legend or not.
-#' @param ... Aesthetic mappings pass for point.
+#' @param reverseY Logical. Whether to reverse Y coordinates. Default is TRUE 
+#' if the spe contains an image (even if not plotted) and FALSE if otherwise.
+#' @param ... Parameters pass to \link[scider]{plotSpatial}
 #'
 #' @return A ggplot object.
 #' @export
@@ -19,78 +24,89 @@
 #'
 #' spe <- findROI(spe, coi = coi, method = "walktrap", steps = 5)
 #'
-#' plotROI(spe, size = 0.3, alpha = 0.2)
+#' plotROI(spe, roi = coi, pt.size = 0.3, pt.alpha = 0.2)
 #'
 plotROI <- function(spe,
+                    roi = NULL,
                     id = "cell_type",
-                    show.legend = FALSE, ...) {
-    if (is.null(spe@metadata$roi)) {
-        stop("ROI not yet computed!")
-    }
+                    label = TRUE,
+                    show.legend = FALSE, 
+                    reverseY = NULL,
+                    ...) {
+  roi_clean <- `if`(is.null(roi),"overall",cleanName(roi))
+  roi_clean_name <- paste(c(roi_clean,"roi"), collapse="_")
+  
+  if (is.null(spe@metadata[[roi_clean_name]])) {
+    stop("ROI of interest doesn't exist. Please run findROI(), or specify 'roi'.")
+  }
+  
+  rois <- as.data.frame(spe@metadata[[roi_clean_name]])
+  
+  # Filter background points to roi only.
+  if (roi_clean_name != "overall_roi" &&
+      id %in% colnames(spe@colData) &&
+      any(spe@colData[,id] %in% roi)) {
+    spe <- spe[, spe@colData[,id] %in% roi]
+  }
+  
+  nROIs <- nlevels(rois$component)
+  col.p <- selectColor(nROIs)
+  
+  # Get centres of ROIS
+  sf <- grid2sf(spe, rois$x,rois$y)
+  sf <- lapply(unique(rois$component), function(xx) {
+    sf::st_union(sf::st_sfc(sf[rois$component == xx]))
+  })
+  names(sf) <- as.character(unique(rois$component))
+  rois_center <- do.call(rbind, lapply(sf, function(rr) {
+    center <- sf::st_point_on_surface(rr)
+    as.data.frame(sf::st_coordinates(center))
+  }))
+  rois_center <- as.data.frame(rois_center)
+  rois_center$component <- names(sf)
+  
+  # Turn sf into a dataframe for geom_polygon
+  # Dealing with MULTIPOLYGON (which can happen with mergeROI)
+  sf <- lapply(sf, function(xx) sf::st_cast(xx,"POLYGON"))
+  poly_groups <- list(rep.int(1:length(sf),lengths(sf)))
+  sf <- as.data.frame(sf::st_coordinates(do.call(c,sf)))
+  sf$component <- rep.int(rois_center$component,
+                          stats::aggregate(
+                            tabulate(sf$L2),
+                            by=poly_groups,
+                            FUN=sum)[[2]])
+  # Plotting
+  p <- plotSpatial(spe, reverseY=reverseY, ...) +
+    geom_polygon(
+      data = sf,
+      aes(
+        x=X,
+        y=Y,
+        group = L2,
+        fill = component,
+        alpha = 0.6,
+        subgroup = L1
+      ),color=NA,
+      inherit.aes = F) +
+    scale_fill_manual(values = col.p) +
+    ggtitle(paste0("ROI (", paste(roi_clean, collapse=", "), ")"))
+  p <- update_bound(p, y=sf$Y)
 
-    rois <- as.data.frame(spe@metadata$roi)
-
-    coi <- spe@metadata$coi
-    coi_clean <- janitor::make_clean_names(coi)
-
-    dat <- as.data.frame(spe@colData)
-
-    if (!is.null(coi)) {
-        spe <- spe[, dat[, id] %in% coi]
-    }
-
-    posdat <- as.data.frame(spatialCoords(spe))
-
-    dat <- as.data.frame(spe@colData) |>
-        cbind(posdat)
-
-    nROIs <- nlevels(rois$component)
-    col.p <- selectColor(nROIs)
-
-    xlim <- spe@metadata$grid_info$xlim
-    ylim <- spe@metadata$grid_info$ylim
-    plot.xlim <- xlim + c(-1e-10, 1e-10)
-    plot.ylim <- ylim + c(-1e-10, 1e-10)
-
-    # filtered <- names(which(table(rois$component) >= ngrid))
-    # rois_filtered <- as.data.frame(rois[rois$component %in% filtered, ])
-
-    # for(n in colnames(colData(spe))){
-    #  if (!(n %in% colnames(rois_filtered))){
-    #    rois_filtered[, n] <- "dummy"
-    #  }
-    # }
-
-    # Label ROI numbers at the center
-    sf <- grid2sf(spe)
-    rois_center <- do.call(rbind, lapply(sf, function(rr) {
-        center <- sf::st_point_on_surface(rr)
-        as.data.frame(sf::st_coordinates(center))
-    }))
-
-    rois_center <- as.data.frame(rois_center) |>
-        rownames2col("component")
-
-    roi_plot <- plotSpatial(spe, ...) +
-        geom_tile(
-            data = rois, aes(x = xcoord, y = ycoord, fill = component),
-            alpha = 0.6
-        ) +
-        # scale_fill_manual(values = col.p) +
-        annotate("text",
-            x = rois_center$X, y = rois_center$Y,
-            label = rois_center$component, color = "black", fontface = 2
-        ) +
-        scale_fill_manual(values = col.p) +
-        scale_x_continuous(limits = plot.xlim) +
-        scale_y_continuous(limits = plot.ylim)
-
-    if (isFALSE(show.legend)) {
-        roi_plot <- roi_plot +
-            theme(legend.position = "none")
-    }
-
-    return(roi_plot)
+  if (isFALSE(show.legend)) {
+    p <- p +
+      theme(legend.position = "none")
+  }
+  
+  if (label) {
+    p <- p +
+      annotate("text",
+               x = rois_center$X, y = rois_center$Y,
+               label = rois_center$component, color = "black", fontface = 2
+      )
+  }
+  
+  return(p)
 }
+
 
 utils::globalVariables(c("xcoord", "ycoord", "component"))

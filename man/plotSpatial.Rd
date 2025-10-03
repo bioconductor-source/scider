@@ -4,17 +4,54 @@
 \alias{plotSpatial}
 \title{Plot cells based on spatial coordinates.}
 \usage{
-plotSpatial(spe, reverseY = FALSE, n = 30, ...)
+plotSpatial(
+  spe,
+  group.by = NULL,
+  feature = NULL,
+  assay = "counts",
+  type = c("raw", "log", "cpm", "logcpm"),
+  cols = NULL,
+  pt.shape = 16,
+  pt.size = 0.3,
+  pt.alpha = 0.5,
+  label = NULL,
+  cols.scale = NULL,
+  reverseY = NULL,
+  ...
+)
 }
 \arguments{
 \item{spe}{A SpatialExperiment object.}
 
-\item{reverseY}{Reverse y coordinates.}
+\item{group.by}{values to group points by. Must be in colData of spe.
+If NULL, will try with 'cols' if available.}
 
-\item{n}{Integer value. The number of distinct color to be generated,
-default is 30.}
+\item{feature}{Feature to group polygons by. Must be in rownames(spe).}
 
-\item{...}{Aesthetic mappings to pass to \code{ggplot2::aes_string()}.}
+\item{assay}{Name of assay to use for plotting feature.}
+
+\item{type}{Transformation to apply for the group/feature. Options are "raw"
+, "log", "cpm", "logcpm", or a function that accepts and returns a vector of
+the same length.}
+
+\item{cols}{Colour palette. Can be a vector of colours or a function
+that accepts an integer n and return n colours.}
+
+\item{pt.shape}{shape of points.}
+
+\item{pt.size}{size of points.}
+
+\item{pt.alpha}{alpha of points between 0 and 1.}
+
+\item{label}{label for the legend}
+
+\item{cols.scale}{vector of position for color if colors should not be
+evenly positioned. See \link[ggplot2]{scale_color_gradientn}. Only applicable for continuous values.}
+
+\item{reverseY}{Logical. Whether to reverse Y coordinates. Default is TRUE
+if the spe contains an image (even if not plotted) and FALSE if otherwise.}
+
+\item{...}{Parameters pass to plotImage}
 }
 \value{
 A ggplot object.
@@ -26,6 +63,6 @@ Plot cells based on spatial coordinates.
 
 data("xenium_bc_spe")
 
-plotSpatial(spe, shape = ".", color = cell_type, size = 0.3, alpha = 0.2)
+plotSpatial(spe, group.by = "cell_type", pt.size = 0.5, pt.alpha = 0.6)
 
 }

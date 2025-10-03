@@ -4,15 +4,27 @@
 \alias{mergeROI}
 \title{Manually merge ROIs}
 \usage{
-mergeROI(spe, merge.list, id = "component", rename = FALSE)
+mergeROI(
+  spe,
+  roi = NULL,
+  merge.list = NULL,
+  remove.ids = NULL,
+  id = "component",
+  rename = FALSE
+)
 }
 \arguments{
 \item{spe}{A SpatialExperiment object.}
+
+\item{roi}{Character. The name of the group or cell type on which
+the roi is computed. All cell types are chosen if NULL or 'overall'.}
 
 \item{merge.list}{A (named) list of vectors of ROI ids to be merged.
 Each vector in the list should be of length greater than or
 equal to 2. If no name is specified, the merged ROI will be
 named by concatenating ROIs being merged.}
+
+\item{remove.ids}{Optional. A vector of ROI ids to be removed.}
 
 \item{id}{Character. The name of the column in \code{spe@metadata$roi}
 that stores the ROIs to be merged. Default is "component".}
@@ -37,6 +49,6 @@ spe <- gridDensity(spe, coi = coi)
 
 spe <- findROI(spe, coi = coi, method = "walktrap")
 
-spe <- mergeROI(spe, list("1-2" = 1:2))
+spe <- mergeROI(spe, roi = coi, list("1-2" = 1:2))
 
 }

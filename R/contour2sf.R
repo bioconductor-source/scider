@@ -2,12 +2,11 @@
 #'
 #' @param spe A SpatialExperiment object.
 #' @param contour Name in metadata.
-#' @param coi A character vector of cell types of interest (COIs).
 #' @param cutoff A numeric scalar specifying the density cutoff.
 #'
 #' @return An sf object of the contour region of the specified level.
 #'
-contour2sf <- function(spe, contour, coi, cutoff) {
+contour2sf <- function(spe, contour, cutoff) {
     if (!requireNamespace("sf", quietly = TRUE)) stop("sf required but is not
                                                     available")
     if (!requireNamespace("lwgeom", quietly = TRUE)) stop("lwgeom required but
@@ -17,18 +16,16 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                                              contours first!")
 
     clines <- as.data.frame(spe@metadata[[contour]])
-    xlim <- c(min(clines$x), max(clines$x))
-    ylim <- c(min(clines$y), max(clines$y))
+    xlim <- range(clines$x)
+    ylim <- range(clines$y)
     lims <- c(xmin = xlim[1], ymin = ylim[1], xmax = xlim[2], ymax = ylim[2])
     canvas_sf <- sf::st_sf(sf::st_as_sfc(sf::st_bbox(lims)))
     levs <- sort(unique(clines$cutoff))
     lev_code <- findInterval(cutoff, levs, rightmost.closed = FALSE)
     clines_lev <- clines[clines$cutoff == cutoff, c("x", "y", "piece")]
-    grid_area <- spe@metadata$grid_info$xstep * spe@metadata$grid_info$ystep
+    # grid_area <- spe@metadata$grid_info$xstep * spe@metadata$grid_info$ystep
 
-    coi_clean <- janitor::make_clean_names(coi)
-    dens_cols <- paste("density", coi_clean, sep = "_")
-
+    dens_cols <- S4Vectors::metadata(spe@metadata[[contour]])$densities
     dens <- as.data.frame(spe@metadata$grid_density)
     dens$density_coi_average <- rowMeans(dens[, which(colnames(dens) %in%
         dens_cols),
@@ -84,8 +81,7 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                         sf::st_sf
                     )
                 )
-                # whether_cross <- c(sf::st_crosses(other_clines_sf,
-                #        bbox_sf, sparse = FALSE))
+
                 whether_cross <- c(sf::st_crosses(other_clines_sf,
                     bbox_sf,
                     sparse = FALSE
@@ -118,10 +114,10 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                 regions_tmp <- regions
                 regions_tmp[ind_buffer, ] <- sf::st_buffer(
                     regions_tmp[ind_buffer, ],
-                    dist = mean(
-                        spe@metadata$grid_info$xstep,
-                        spe@metadata$grid_info$ystep
-                    ) / 2
+                    dist = `if`(spe@metadata$grid_info$grid_type == "hex",
+                         diff(spe@metadata$grid_info$xlim)/spe@metadata$grid_info$xbins/2,
+                         spe@metadata$grid_info$xstep/2
+                    )
                 )
                 inds <- sf::st_intersects(regions_tmp, grids_pts_sf)
             }
@@ -142,6 +138,18 @@ contour2sf <- function(spe, contour, coi, cutoff) {
             area <- sf::st_cast(line_piece_sf, "POLYGON")
             area <- sf::st_sf(area)
             inds <- sf::st_intersects(area, grids_pts_sf)
+            if (any(sapply(inds, length) == 0L)) {
+              ind_buffer <- which(sapply(inds, length) == 0L)
+              area_tmp <- area
+              area_tmp[ind_buffer, ] <- sf::st_buffer(
+                area_tmp[ind_buffer, ],
+                dist = `if`(spe@metadata$grid_info$grid_type == "hex",
+                            diff(spe@metadata$grid_info$xlim)/spe@metadata$grid_info$xbins/2,
+                            spe@metadata$grid_info$xstep/2
+                )
+              )
+              inds <- sf::st_intersects(area_tmp, grids_pts_sf)
+            }
             avglevel <- mean(grids_pts_sf$density_coi_average[unlist(inds)])
             avglevel <- findInterval(avglevel, levs,
                 rightmost.closed = FALSE
@@ -187,8 +195,12 @@ contour2sf <- function(spe, contour, coi, cutoff) {
     ))
 
     if (!is.null(areas_down)) {
-        areas_up_union <- sf::st_union(areas_up)
-        out <- sf::st_covered_by(areas_down, areas_up_union, sparse = FALSE)
+        if (!is.null(areas_up)){
+            areas_up_union <- sf::st_union(sf::st_make_valid(areas_up))
+            out <- sf::st_covered_by(areas_down, areas_up_union, sparse = FALSE)
+        } else {
+            out <- sf::st_covered_by(areas_down, sparse = FALSE)
+        }
         areas_down_out <- areas_down[c(out), ]
         if (nrow(areas_down_out) > 0L) {
             # flatten out overlaps
@@ -218,11 +230,15 @@ contour2sf <- function(spe, contour, coi, cutoff) {
             )
             areas_down_out <- areas_down_out[areas_down_out_code < lev_code, ]
             areas_down_out <- sf::st_combine(areas_down_out)
-            areas <- sf::st_difference(areas_up_union, areas_down_out)
-            # check if there is any missed area
-            missed_up <- !sf::st_intersects(areas_up, areas, sparse = FALSE)
-            if (any(missed_up)) {
-                areas <- sf::st_union(sf::st_sf(areas), areas_up[missed_up, ])
+            if (!is.null(areas_up)){
+                areas <- sf::st_difference(areas_up_union, sf::st_make_valid(areas_down_out))
+                # check if there is any missed area
+                missed_up <- !sf::st_intersects(areas_up, areas, sparse = FALSE)
+                if (any(missed_up)) {
+                  areas <- sf::st_union(sf::st_sf(areas), areas_up[missed_up, ])
+                }
+            } else {
+                areas <- areas_down_out
             }
         } else {
             areas <- sf::st_union(areas_up)
@@ -300,6 +316,12 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                 return(this_stripe_still_up)
             })
             any_still_up <- sapply(stripes_up, nrow)
+            #any_still_up <- sapply(stripes_up, function(ii) {
+            #    is_empty <- sapply(1:nrow(ii), function(rr) {
+            #        sf::st_is_empty(ii[rr, ]) + 0L
+            #        })
+            #    nrow(ii) - sum(is_empty)
+            #    })
             if (any(any_still_up > 0L)) {
                 stripes_up <- do.call(rbind, stripes_up)
                 stripes_up <- sf::st_difference(
@@ -322,12 +344,12 @@ contour2sf <- function(spe, contour, coi, cutoff) {
         # check if there are any other up regions
         canvas_minus_areas <- sf::st_difference(
             canvas_sf,
-            sf::st_union(areas)
+            sf::st_union(sf::st_make_valid(areas))
         )
         if (!is.null(areas_down)) {
             canvas_minus_areas <- sf::st_difference(
                 canvas_minus_areas,
-                sf::st_union(areas_down)
+                sf::st_union(sf::st_make_valid(areas_down))
             )
         }
         if (nrow(canvas_minus_areas) > 0L) {
@@ -372,10 +394,10 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                     if (length(unlist(inds)) == 0L) {
                         inds <- sf::st_intersects(
                             sf::st_buffer(xx,
-                                dist = mean(
-                                    spe@metadata$grid_info$xstep,
-                                    spe@metadata$grid_info$ystep
-                                ) / 2
+                                dist = `if`(spe@metadata$grid_info$grid_type == "hex",
+                                            diff(spe@metadata$grid_info$xlim)/spe@metadata$grid_info$xbins/2,
+                                            spe@metadata$grid_info$xstep/2
+                                )
                             ),
                             grids_pts_sf
                         )
@@ -396,11 +418,7 @@ contour2sf <- function(spe, contour, coi, cutoff) {
                 areas <- sf::st_union(areas, canvas_minus_areas_still_up)
             }
         }
-
-        # check if there are any other down regions
-        areas_split <- sf::st_union(areas) |>
-            sf::st_cast(to = "POLYGON") |>
-            sf::st_sf()
+        
     }
 
     areas <- sf::st_as_sf(sf::st_union(areas))

@@ -4,12 +4,25 @@
 \alias{getContour}
 \title{Get contour from density}
 \usage{
-getContour(spe, coi, bins = NULL, binwidth = NULL, breaks = NULL)
+getContour(
+  spe,
+  coi = NULL,
+  equal.cell = TRUE,
+  bins = NULL,
+  binwidth = NULL,
+  breaks = NULL,
+  id = NULL
+)
 }
 \arguments{
 \item{spe}{A SpatialExperiment object.}
 
-\item{coi}{A character vector of cell types of interest (COIs).}
+\item{coi}{A character vector of cell types of interest (COIs).
+All cell types are chosen if NULL or \code{overall}.}
+
+\item{equal.cell}{Logical. Whether to use produce contour levels so that
+there are roughly the same number of cells of the COI at each level.
+Default to TRUE.}
 
 \item{bins}{An integer. Number of contour levels.}
 
@@ -17,6 +30,10 @@ getContour(spe, coi, bins = NULL, binwidth = NULL, breaks = NULL)
 
 \item{breaks}{A numeric scale referring to the breaks in
 \code{ggplot2:::contour_breaks}.}
+
+\item{id}{A character. The name of the column of colData(spe) containing
+the cell type identifiers. Set to cell_type by default or in_tissue if spe
+is Visium. Only needed when \code{equal.cell = TRUE}.}
 }
 \value{
 A SpatialExperiment object. An sf object of the contour region of

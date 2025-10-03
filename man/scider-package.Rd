@@ -4,8 +4,10 @@
 \name{scider-package}
 \alias{scider-package}
 \alias{scider}
-\title{Spatial cell-type inter-correlation by density in R.}
+\title{scider: Spatial cell-type inter-correlation by density in R}
 \description{
+scider is an user-friendly R package providing functions to model the global density of cells in a slide of spatial transcriptomics data. All functions in the package are built based on the SpatialExperiment object, allowing integration into various spatial transcriptomics-related packages from Bioconductor. After modelling density, the package allows for serveral downstream analysis, including colocalization analysis, boundary detection analysis and differential density analysis.
+
 \code{scider} implements functions to analyse spatial transcriptomics data with
 cell type annotations by performing cell type correlation via density
 estimation and cell type co-localization via real number distance.
@@ -17,9 +19,29 @@ visualizations.
 which can easily be integrated with a wide variety
 of Bioconductor packages.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/ChenLaboratory/scider}
+  \item \url{https://chenlaboratory.github.io/scider/}
+  \item Report bugs at \url{https://github.com/ChenLaboratory/scider/issues}
+}
+
+}
 \author{
+\strong{Maintainer}: Yunshun Chen \email{yuchen@wehi.edu.au} (\href{https://orcid.org/0000-0003-4911-5653}{ORCID})
+
+Authors:
+\itemize{
+  \item Mengbo Li \email{li.me@wehi.edu.au} (\href{https://orcid.org/0000-0002-9666-5810}{ORCID})
+  \item Ning Liu \email{liu.n@wehi.edu.au} (\href{https://orcid.org/0000-0002-9487-9305}{ORCID})
+  \item Quoc Hoang Nguyen \email{nguyen.q@wehi.edu.au} (\href{https://orcid.org/0009-0007-2828-7567}{ORCID})
+}
+
+
 Ning Liu \email{liu.n@wehi.edu.au},
 Mengbo Li \email{li.me@wehi.edu.au},
-Yunshun Chen \email{yuchen@wehi.edu.au}
+Yunshun Chen \email{yuchen@wehi.edu.au},
+Quoc Hoang Nguyen \email{nguyen.q@wehi.edu.au}
 }
 \keyword{internal}

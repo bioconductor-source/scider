@@ -1,24 +1,28 @@
 Package: scider
 Type: Package
 Title: Spatial cell-type inter-correlation by density in R
-Version: 1.7.0
+Version: 1.7.1
 Authors@R: 
-    c(person(given = "Ning", 
-            family = "Liu",
-            role = c("aut"),
-            email = "liu.n@wehi.edu.au",
-            comment = c(ORCID = "0000-0002-9487-9305")),
-      person(given = "Mengbo",
-             family = "Li",
+    c(person(given = "Mengbo",family = "Li", 
              role = c("aut"),
              email = "li.me@wehi.edu.au",
              comment = c(ORCID = "0000-0002-9666-5810")),
+      person(given = "Ning", 
+             family = "Liu",
+             role = c("aut"),
+             email = "liu.n@wehi.edu.au",
+             comment = c(ORCID = "0000-0002-9487-9305")),
+      person(given = "Quoc Hoang",
+             family = "Nguyen",
+             role = c("aut"),
+             email = "nguyen.q@wehi.edu.au",
+             comment = c(ORCID = "0009-0007-2828-7567")),
       person(given = "Yunshun",
              family = "Chen",
              role = c("aut", "cre"),
              email = "yuchen@wehi.edu.au",
              comment = c(ORCID = "0000-0003-4911-5653")))
-Description: scider is a user-friendly R package providing functions 
+Description: scider is an user-friendly R package providing functions 
     to model the global density of cells in a slide of spatial 
     transcriptomics data. All functions in the package are built 
     based on the SpatialExperiment object, allowing integration into 
@@ -33,7 +37,7 @@ BugReports: https://github.com/ChenLaboratory/scider/issues
 Encoding: UTF-8
 LazyData: false
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Imports:
     SpatialExperiment,
     SummarizedExperiment,
@@ -41,6 +45,7 @@ Imports:
     spatstat.explore,
     sf,
     lwgeom, 
+    SpatialPack, 
     ggplot2,
     stats,
     pheatmap,
@@ -51,10 +56,16 @@ Imports:
     knitr,
     methods,
     utils,
-    rlang,
     isoband,
     S4Vectors,
-    grDevices
+    grDevices,
+    dbscan,
+    hexDensity,
+    hexbin,
+    uwot,
+    SingleCellExperiment,
+    BiocNeighbors,
+    irlba
 Suggests:
     edgeR,
     testthat (>= 3.0.0)
